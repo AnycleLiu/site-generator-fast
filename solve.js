@@ -284,8 +284,9 @@ function fenceOpen(line) {
   if (line.charCodeAt(0) !== 96 || line.charCodeAt(1) !== 96 || line.charCodeAt(2) !== 96) return null;
   let i = 3;
   while (i < line.length && isLangChar(line.charCodeAt(i))) i++;
+  const lang = line.slice(3, i);
   for (; i < line.length; i++) { const c = line.charCodeAt(i); if (c !== 32 && c !== 9) return null; }
-  return line.slice(3, i);
+  return lang;
 }
 
 /** Fence close: '```' + spaces/tabs only. */
@@ -303,14 +304,18 @@ function headingOf(line) {
   if (n >= line.length) return null;
   const c = line.charCodeAt(n);
   if (c !== 32 && c !== 9) return null;
+  // The reference heading rule consumes the whole run of spaces/tabs after
+  // the #'s (^(#{1,6})[ \t]+), not just the first separator character.
+  let a = n;
+  while (a < line.length && (line.charCodeAt(a) === 32 || line.charCodeAt(a) === 9)) a++;
   // Trailing spaces/tabs are dropped; skip the backward scan when the last
   // character is not one (the common case).
   let b = line.length;
   const last = line.charCodeAt(b - 1);
   if (last === 32 || last === 9) {
-    while (b > n + 1 && (line.charCodeAt(b - 1) === 32 || line.charCodeAt(b - 1) === 9)) b--;
+    while (b > a && (line.charCodeAt(b - 1) === 32 || line.charCodeAt(b - 1) === 9)) b--;
   }
-  const text = line.slice(n + 1, b);
+  const text = line.slice(a, b);
   // the regex (.*?)[ \t]*$ trims trailing spaces/tabs but also requires the
   // first char after the #'s+space to exist; text here is already trimmed.
   // Note: if the rest is only spaces/tabs, text is '' -> null.
